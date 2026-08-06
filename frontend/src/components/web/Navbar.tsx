@@ -1,5 +1,4 @@
 "use client"
-
 import { Check, Monitor, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
@@ -28,9 +27,8 @@ function ThemeToggle() {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="rounded-full hover:cursor-pointer"
             aria-label="Toggle theme"
-            className="hover:cursor-pointer"
           />
         }
       >
