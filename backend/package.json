@@ -15,9 +15,11 @@
     "typescript": "5.9.2"
   },
   "scripts": {
-    "dev": "tsx watch --clear-screen=false src/server.ts"
+    "dev": "tsx watch --clear-screen=false src/server.ts",
+    "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.51",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
