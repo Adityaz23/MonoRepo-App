@@ -1,0 +1,52 @@
+// simple idea one id for the user to use on the frontend side and another one in the database or postgres one.
+
+export type UserRow = {
+  id: number
+  clerk_user_id: string
+  display_name: string | null
+  handle: string | null
+  avatar_url: string | null
+  bio: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+export type User = {
+  id: number
+  clerkUserId: string
+  displayName: string | null
+  handle: string | null
+  avatarUrl: string | null
+  bio: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type UserProfile = {
+  user: User
+  clerkEmail: string | null
+  clerkFullName: string | null
+}
+
+export type UserProfileResponse = {
+  id: number
+  clerkUserId: string
+  emailId: string | null
+  displayName: string | null
+  handle: string | null
+  avatarUrl: string | null
+  bio: string | null
+}
+
+export function toUserProfileResponse(profile: UserProfile): UserProfileResponse {
+  const { user, clerkEmail, clerkFullName } = profile
+  return {
+    id: user.id,
+    bio: user.bio,
+    clerkUserId: user.clerkUserId,
+    displayName: user.displayName ?? clerkFullName ?? null,
+    handle: user.handle ?? null,
+    avatarUrl: user.avatarUrl ?? null,
+    emailId: clerkEmail ?? null,
+  }
+}
