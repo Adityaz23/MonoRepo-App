@@ -13,7 +13,7 @@ export const userRouter = Router()
 
 // in the patch route the user should be able to update the bio, name, handle and avatar url.
 // user update schema =>
-const userProfileUpdateSchema = z.object({
+const UserProfileUpdateSchema = z.object({
   displayName: z.string().trim().max(50).optional(),
   handle: z.string().trim().max(50).optional(),
   bio: z.string().trim().max(500).optional(),
