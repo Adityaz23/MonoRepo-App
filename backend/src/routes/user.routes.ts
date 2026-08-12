@@ -34,6 +34,44 @@ userRouter.get('/', async (req, res, next) => {
     const response = toResponse(profile)
     res.json({ data: response })
   } catch (error) {
-    console.error(`Error: ${error}`)
+    next(error)
+  }
+})
+// patch -> /api/me
+userRouter.patch('/', async (req, res, next) => {
+  try {
+    const auth = getAuth(req)
+    if (!auth.userId) {
+      throw new UnauthorisedError('UnauthorisedError')
+    }
+    const parsedBody = UserProfileUpdateSchema.parse(req.body)
+    const displayName =
+      parsedBody.displayName && parsedBody.displayName.trim().length > 0
+        ? parsedBody.displayName.trim()
+        : undefined
+    const handle =
+      parsedBody.handle && parsedBody.handle.trim().length > 0
+        ? parsedBody.handle.trim()
+        : undefined
+    const bio =
+      parsedBody.bio && parsedBody.bio.trim().length > 0 ? parsedBody.bio.trim() : undefined
+    const avatarUrl =
+      parsedBody.avatarUrl && parsedBody.avatarUrl.trim().length > 0
+        ? parsedBody.avatarUrl.trim()
+        : undefined
+    try {
+      const profile = await updateUserProfile({
+        clerkUSerId: auth.userId,
+        displayName,
+        avatarUrl,
+        bio,
+      })
+      const response = toResponse(profile)
+      res.json({ data: response })
+    } catch (e) {
+      throw e
+    }
+  } catch (error) {
+    next(error)
   }
 })
