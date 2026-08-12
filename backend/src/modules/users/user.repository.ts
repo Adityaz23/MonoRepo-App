@@ -26,7 +26,7 @@ export async function upsertUserFromClerkProfile(params: {
     ON CONFLICT(clerk_user_id)
     DO UPDATE SET
        display_name = EXCLUDED.display_name,
-       avatar_url = EXCLUDED.avatar_url
+       avatar_url = EXCLUDED.avatar_url,
        updated_at =NOW()
     RETURNING
       id,

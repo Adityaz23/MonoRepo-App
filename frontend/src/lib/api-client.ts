@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig } from 'axios'
+import axios, { AxiosRequestConfig, type AxiosError, type AxiosInstance } from 'axios'
 export function createBrowserApiClient(getToken: () => Promise<string | null>): AxiosInstance {
   const client = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:5002',
@@ -24,7 +24,7 @@ export function createBrowserApiClient(getToken: () => Promise<string | null>): 
 export async function apiGet<T>(
   client: AxiosInstance,
   url: string,
-  config: AxiosRequestConfig
+  config?: AxiosRequestConfig
 ): Promise<T> {
   const response = await client.get<{ data: T }>(url, config)
   return response.data.data
