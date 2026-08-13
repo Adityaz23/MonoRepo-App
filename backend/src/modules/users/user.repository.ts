@@ -45,3 +45,56 @@ export async function upsertUserFromClerkProfile(params: {
   }
   return hydrateUser(result.rows[0])
 }
+
+export async function repoUpdateUserProfile(params: {
+  clerkUserId: string
+  handle?: string
+  bio?: string
+  displayName?: string
+  avatarUrl?: string
+}): Promise<User> {
+  const { clerkUserId, handle, bio, avatarUrl, displayName } = params
+  const setClauses: string[] = []
+  const values: unknown[] = [clerkUserId] // $1 is always the clerk used id in the WHERE.
+  let idx = 2 // $2, $3
+  // push a cloumn=$index -> string -> push into setClauses
+  // push the actual values into the values set.
+  if (typeof displayName !== undefined) {
+    setClauses.push(`display_name = $${idx++}`) // `display_name = $2.
+    values.push(displayName)
+  }
+  if (typeof handle !== undefined) {
+    setClauses.push(`handle = $${idx++}`) // `handle = $2.
+    values.push(handle)
+  }
+  if (typeof bio !== undefined) {
+    setClauses.push(`bio = $${idx++}`) // `bio = $2.
+    values.push(bio)
+  }
+  if (typeof avatarUrl !== undefined) {
+    setClauses.push(`avatar_url = $${idx++}`) // `avatar_url = $2.
+    values.push(avatarUrl)
+  }
+  setClauses.push(`updated_at = NOW()`)
+  const result = await query<UserRow>(
+    `
+    UPDATE users
+    SET ${setClauses.join(' ')}
+    WHERE clerk_user_id = $1
+    RETURNING
+     id,
+     clerk_user_id,
+     display_name,
+     handle,
+     avatar_url,
+     bio,
+     created_at,
+     updated_at
+    `,
+    values
+  )
+  if (result.rows.length === 0) {
+    throw new Error(`No user found for clerk user id = ${clerkUserId}`)
+  }
+  return hydrateUser(result.rows[0]!)
+}
