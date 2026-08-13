@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { getAuth } from '../config/clerk'
 import { UnauthorisedError } from '../lib/errors'
-import { getUserfromClerk } from '../modules/users/user.service'
+import { getUserfromClerk, updateUserProfile } from '../modules/users/user.service'
 import {
   toUserProfileResponse,
   type UserProfile,
@@ -61,7 +61,7 @@ userRouter.patch('/', async (req, res, next) => {
         : undefined
     try {
       const profile = await updateUserProfile({
-        clerkUSerId: auth.userId,
+        clerkUserId: auth.userId,
         displayName,
         avatarUrl,
         bio,

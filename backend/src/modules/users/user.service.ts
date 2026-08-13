@@ -1,5 +1,5 @@
 import { clerkClient } from '../../config/clerk'
-import { upsertUserFromClerkProfile } from './user.repository'
+import { repoUpdateUserProfile, upsertUserFromClerkProfile } from './user.repository'
 import type { UserProfile } from './user.types'
 async function fetchClerkProfile(clerkUserId: string) {
   const clerkUser = await clerkClient.users.getUser(clerkUserId)
@@ -28,11 +28,13 @@ export async function updateUserProfile(params: {
   avatarUrl?: string
 }): Promise<UserProfile> {
   const { clerkUserId, handle, bio, avatarUrl, displayName } = params
-  const updatedUser = await respoUpdateUserProfile({
+  const updatedUser = await repoUpdateUserProfile({
     clerkUserId,
     handle,
     bio,
     avatarUrl,
     displayName,
   })
+  const { fullName, email } = await fetchClerkProfile(clerkUserId)
+  return { user: updatedUser, clerkEmail: email, clerkFullName: fullName }
 }
