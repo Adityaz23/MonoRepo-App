@@ -29,3 +29,13 @@ export async function apiGet<T>(
   const response = await client.get<{ data: T }>(url, config)
   return response.data.data
 }
+
+export async function apiPatch<TBody, TResponse>(
+  client: AxiosInstance,
+  url: string,
+  body: TBody,
+  config?: AxiosRequestConfig
+): Promise<TResponse> {
+  const res = await client.patch<{ data: TResponse }>(url, body, config)
+  return res.data.data
+}
