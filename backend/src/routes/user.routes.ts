@@ -63,6 +63,7 @@ userRouter.patch('/', async (req, res, next) => {
       const profile = await updateUserProfile({
         clerkUserId: auth.userId,
         displayName,
+        handle,
         avatarUrl,
         bio,
       })
