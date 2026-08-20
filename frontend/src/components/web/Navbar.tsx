@@ -153,10 +153,7 @@ export function Navbar() {
           <Show when="signed-out">
             <div className="hidden items-center gap-2 sm:flex">
               <SignInButton>
-                <Button
-                  variant="ghost"
-                  className="rounded-full px-4 hover:cursor-pointer"
-                >
+                <Button variant="ghost" className="rounded-full px-4 hover:cursor-pointer">
                   Sign in
                 </Button>
               </SignInButton>
@@ -178,7 +175,7 @@ export function Navbar() {
               >
                 <Bell className="size-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground ring-2 ring-background">
+                  <span className="absolute -right-0.5 -top-0.5 inline-flex min-h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground ring-2 ring-background">
                     {unreadCount}
                   </span>
                 )}
@@ -202,11 +199,7 @@ export function Navbar() {
         <div className="animate-in slide-in-from-top-1 fade-in border-t border-border bg-background/95 duration-200 backdrop-blur-md md:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3">
             {navItems.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={mobileLink(!!item.match(pathname))}
-              >
+              <Link key={item.href} href={item.href} className={mobileLink(!!item.match(pathname))}>
                 <item.icon className="size-4" />
                 {item.label}
               </Link>
@@ -215,10 +208,7 @@ export function Navbar() {
           <Show when="signed-out">
             <div className="mx-auto flex max-w-6xl gap-2 px-4 pb-4 pt-1">
               <SignInButton>
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl hover:cursor-pointer"
-                >
+                <Button variant="outline" className="flex-1 rounded-xl hover:cursor-pointer">
                   Sign in
                 </Button>
               </SignInButton>
