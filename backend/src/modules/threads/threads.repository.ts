@@ -143,7 +143,7 @@ export async function listThreads(filter: ThreadListFilter): Promise<ThreadSumma
       t.created_at,
       c.slug AS category_slug,
       c.name AS category_name,
-      u.display_name AS author_display_name
+      u.display_name AS author_display_name,
       u.handle AS author_handle
     FROM threads t
     JOIN categories c ON c.id = t.category_id
