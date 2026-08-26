@@ -23,7 +23,7 @@ threadsRouter.get('/categories', async (req, res, next) => {
     const extractListOfCategories = await listCategories()
     res.json({ data: extractListOfCategories })
   } catch (error) {
-    console.error(`Error: ${error}`)
+    next(error)
   }
 })
 
@@ -45,7 +45,7 @@ threadsRouter.post('/threads', async (req, res, next) => {
     })
     res.status(200).json({ data: newlyCreatedThread })
   } catch (error) {
-    console.error(`Error: ${error}`)
+    next(error)
   }
 })
 
@@ -66,7 +66,7 @@ threadsRouter.get('/threads/:threadId', async (req, res, next) => {
     const thread = await getThreadById(threadId)
     res.json({ data: thread })
   } catch (error) {
-    console.error(`Error: ${error}`)
+    next(error)
   }
 })
 
@@ -82,7 +82,7 @@ threadsRouter.get('/threads', async (req, res, next) => {
     })
     const extractListOfThreads = await listThreads(filter)
     res.json({ data: extractListOfThreads })
-  } catch (error) {
-    console.error(`Error :${error}`)
+} catch (error) {
+    next(error)
   }
 })

@@ -1,7 +1,9 @@
-export default function Home() {
+import ThreadPage from '@/components/web/threads/thread-home'
+
+export default function Thread() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-<p>HomePage</p>
+    <div className="flex flex-col flex-1 w-full">
+      <ThreadPage />
     </div>
-  );
+  )
 }
