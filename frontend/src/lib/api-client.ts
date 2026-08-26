@@ -49,3 +49,12 @@ export async function apiPost<TBody, TResponse>(
   const res = await client.post<{ data: TResponse }>(url, body, config)
   return res.data.data
 }
+
+export async function apiDelete<TResponse>(
+  client: AxiosInstance,
+  url: string,
+  config?: AxiosRequestConfig
+): Promise<TResponse> {
+  const res = await client.delete<{ data: TResponse }>(url, config)
+  return res.data.data
+}

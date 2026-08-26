@@ -21,3 +21,18 @@ export type ThreadDetail = {
     handle: string | null
   }
 }
+
+export type ThreadSummary = {
+  id: number
+  title: string
+  excerpt: string
+  createdAt: string
+  category: {
+    slug: string
+    name: string
+  }
+  author: {
+    displayName: string | null
+    handle: string | null
+  }
+}
