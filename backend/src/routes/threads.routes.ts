@@ -3,8 +3,16 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { BadRequest, UnauthorisedError } from '../lib/errors'
 import {
+  createReply,
+  deleteByReplyId,
+  findReplyAuthor,
+  getThreadByDetailsWithCount,
+  likeThreadOnce,
+  listRepliesForThread,
+  removeLikeOnce,
+} from '../modules/threads/replies.repository'
+import {
   createdThread,
-  getThreadById,
   listCategories,
   listThreads,
   parseThreadListFilter,
@@ -61,9 +69,9 @@ threadsRouter.get('/threads/:threadId', async (req, res, next) => {
       throw new UnauthorisedError('Unauthorised')
     }
 
-    // const profile = await getUserfromClerk(auth.userId)
-    // let viewerUserId = profile.user.id
-    const thread = await getThreadById(threadId)
+    const profile = await getUserfromClerk(auth.userId)
+    let viewerUserId = profile.user.id
+    const thread = await getThreadByDetailsWithCount({ threadId, viewerUserId })
     res.json({ data: thread })
   } catch (error) {
     next(error)
@@ -82,7 +90,110 @@ threadsRouter.get('/threads', async (req, res, next) => {
     })
     const extractListOfThreads = await listThreads(filter)
     res.json({ data: extractListOfThreads })
-} catch (error) {
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Thread route for the replies, upvote,downvote functionality ->
+threadsRouter.get('/threads/:threadId/replies', async (req, res, next) => {
+  try {
+    const auth = getAuth(req)
+    if (!auth.userId) {
+      throw new UnauthorisedError('Unauthorised')
+    }
+    const threadId = Number(req.params.threadId)
+    const replies = await listRepliesForThread(threadId)
+    res.json({ data: replies })
+  } catch (error) {
+    console.error(`Error : ${error}`)
+    next(error)
+  }
+})
+
+// Thread route for the post of thread =>
+threadsRouter.post('/threads/:threadId/replies', async (req, res, next) => {
+  try {
+    const auth = getAuth(req)
+    if (!auth.userId) {
+      throw new UnauthorisedError('Unauthorised')
+    }
+    const threadId = Number(req.params.threadId)
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequest('Invalid thread id')
+    }
+    const bodyRaw = typeof req.body?.body === 'string' ? req.body.body : ''
+    if (bodyRaw.trim().length <= 2) {
+      throw new BadRequest('Reply is too short')
+    }
+    const profile = await getUserfromClerk(auth.userId)
+    const reply = await createReply({ threadId, authorUserId: profile.user.id, body: bodyRaw })
+    // here we will trigger the notification
+    res.status(201).json({ data: reply })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Thread route for the delete of the post =>
+threadsRouter.delete('/replies/:replyId', async (req, res, next) => {
+  try {
+    const auth = getAuth(req)
+    if (!auth.userId) {
+      throw new UnauthorisedError('Unauthorised')
+    }
+    const replyId = Number(req.params.replyId)
+    if (!Number.isInteger(replyId) || replyId <= 0) {
+      throw new BadRequest('Invalid reply id.')
+    }
+    const profile = await getUserfromClerk(auth.userId)
+    const authorUserId = await findReplyAuthor(replyId)
+
+    if (authorUserId !== profile.user.id) {
+      throw new UnauthorisedError("You can't delete this someone else replies.")
+    }
+
+    await deleteByReplyId(replyId)
+    res.status(204).send()
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Now for the like and removing the like =>
+threadsRouter.post('/threads/:threadId/like', async (req, res, next) => {
+  try {
+    const auth = getAuth(req)
+    if (!auth.userId) {
+      throw new UnauthorisedError('Unauthorised')
+    }
+    const threadId = Number(req.params.threadId)
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequest('Invalid id.')
+    }
+    const profile = await getUserfromClerk(auth.userId)
+    await likeThreadOnce({ threadId, userId: profile.user.id })
+    // here also the notification.
+    res.status(204).send()
+  } catch (error) {
+    next(error)
+  }
+})
+
+threadsRouter.delete('/threads/:threadId/like', async (req, res, next) => {
+  try {
+    const auth = getAuth(req)
+    if (!auth.userId) {
+      throw new UnauthorisedError('Unauthorised')
+    }
+    const threadId = Number(req.params.threadId)
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequest('Invalid id.')
+    }
+    const profile = await getUserfromClerk(auth.userId)
+    await removeLikeOnce({ threadId, userId: profile.user.id })
+    res.status(204).send()
+  } catch (error) {
     next(error)
   }
 })
