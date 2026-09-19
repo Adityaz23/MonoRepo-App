@@ -70,7 +70,7 @@ export default function ThreadPage() {
         const data = await apiGet<ThreadSummary[]>(apiClient, '/api/threads/threads', {
           params: {
             category: activeCategory !== 'all' ? activeCategory : undefined,
-            q: queryFromUrl.trim() || undefined,
+            q: search || undefined,
           },
         })
 

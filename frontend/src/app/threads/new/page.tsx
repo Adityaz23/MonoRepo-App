@@ -370,7 +370,7 @@ export default function NewThreadPage() {
                 min-w-40
                 rounded-lg
                 border-0
-                bg-gradient-to-r
+                bg-linear-to-r
                 from-pink-500
                 to-indigo-500
                 px-6
