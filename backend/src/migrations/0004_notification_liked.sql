@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS notifications (
     type IN (
       'REPLY_ON_THREAD',
       'LIKE_ON_THREAD',
-      'LIKE_ON_REPLY',
-      'MENTION_IN_THREAD',
       'MENTION_IN_REPLY'
     )
   ),
