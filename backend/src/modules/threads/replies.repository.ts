@@ -116,6 +116,8 @@ export async function likeThreadOnce(params: { threadId: number; userId: number 
     INSERT INTO thread_reactions (thread_id, user_id, reaction)
     VALUES ($1, $2, 1)
     ON CONFLICT (thread_id, user_id) DO UPDATE SET reaction = 1
+    WHERE thread_reactions.reaction <> 1
+
     `,
     [threadId, userId]
   )

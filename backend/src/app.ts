@@ -14,6 +14,8 @@ export function createApp() {
   app.use('/api', apiRouter)
   app.use(notFoundHandler)
   app.use(errorHandler)
-
+  app.get('/', (_req, res) => {
+    res.json({ status: 'ok' })
+  })
   return app
 }

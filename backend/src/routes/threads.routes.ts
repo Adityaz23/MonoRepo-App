@@ -1,7 +1,9 @@
 import { getAuth } from '@clerk/express'
+import type { Request } from 'express'
 import { Router } from 'express'
 import { z } from 'zod'
-import { BadRequest, UnauthorisedError } from '../lib/errors'
+import { BadRequest, ForbiddenError, NotFoundError, UnauthorisedError } from '../lib/errors'
+import { createReplyNotification } from '../modules/notifications/notification.service'
 import {
   createReply,
   deleteByReplyId,
@@ -18,67 +20,107 @@ import {
   parseThreadListFilter,
 } from '../modules/threads/threads.repository'
 import { getUserfromClerk } from '../modules/users/user.service'
-// schema for the threads creation ->
+
+// ---------- Schemas ----------
+
 const createThreadSchema = z.object({
   title: z.string().trim().min(5).max(200),
   body: z.string().trim().min(10).max(2000),
   categorySlug: z.string().trim().min(1),
 })
 
-export const threadsRouter = Router()
-threadsRouter.get('/categories', async (req, res, next) => {
+const createReplySchema = z.object({
+  body: z.string().trim().min(3, 'Reply is too short').max(2000, 'Reply is too long'),
+})
+
+// ---------- Helpers ----------
+
+/** Parses and validates a positive integer id from a route param. */
+const parseId = (raw: string | undefined, label = 'id'): number => {
+  const n = Number(raw)
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new BadRequest(`Invalid ${label}.`)
+  }
+  return n
+}
+
+/** Ensures the request is authenticated and returns the Clerk user id. */
+const requireClerkUserId = (req: Request): string => {
+  const { userId } = getAuth(req)
+  if (!userId) {
+    throw new UnauthorisedError('Unauthorised')
+  }
+  return userId
+}
+
+/** Ensures the request is authenticated and returns our internal user id. */
+const requireCurrentUserId = async (req: Request) => {
+  const clerkUserId = requireClerkUserId(req)
+  const profile = await getUserfromClerk(clerkUserId)
+  return profile.user.id
+}
+
+/**
+ * Notifications are a side effect. If they fail, the main action (reply / like)
+ * has already succeeded, so we log the failure instead of returning a 500.
+ */
+const safeNotify = async (label: string, fn: () => Promise<unknown>) => {
   try {
-    const extractListOfCategories = await listCategories()
-    res.json({ data: extractListOfCategories })
+    await fn()
+  } catch (error) {
+    console.error(`Failed to send ${label} notification:`, error)
+  }
+}
+
+// ---------- Routes ----------
+
+export const threadsRouter = Router()
+
+// List categories
+threadsRouter.get('/categories', async (_req, res, next) => {
+  try {
+    const categories = await listCategories()
+    res.json({ data: categories })
   } catch (error) {
     next(error)
   }
 })
 
-// Crating the new thread ->
+// Create a new thread
 threadsRouter.post('/threads', async (req, res, next) => {
   try {
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('UnauthorisedError')
-    }
+    const authorUserId = await requireCurrentUserId(req)
     const parsedBody = createThreadSchema.parse(req.body)
-    // extracting the infromation from the profile of the user.
-    const profile = await getUserfromClerk(auth.userId)
-    const newlyCreatedThread = await createdThread({
+
+    const newThread = await createdThread({
       categorySlug: parsedBody.categorySlug,
-      authorUserId: profile.user.id,
+      authorUserId,
       title: parsedBody.title,
       body: parsedBody.body,
     })
-    res.status(200).json({ data: newlyCreatedThread })
+    res.status(201).json({ data: newThread })
   } catch (error) {
     next(error)
   }
 })
 
-// Generating the route to get the threads by the id ->
+// Get a single thread by id
 threadsRouter.get('/threads/:threadId', async (req, res, next) => {
   try {
-    const threadId = Number(req.params.threadId)
-    if (!Number.isInteger(threadId) || threadId <= 0) {
-      throw new BadRequest('Invalid thread id.')
-    }
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('Unauthorised')
-    }
+    const threadId = parseId(req.params.threadId, 'thread id')
+    const viewerUserId = await requireCurrentUserId(req)
 
-    const profile = await getUserfromClerk(auth.userId)
-    let viewerUserId = profile.user.id
     const thread = await getThreadByDetailsWithCount({ threadId, viewerUserId })
+    if (!thread) {
+      throw new NotFoundError('Thread not found.')
+    }
     res.json({ data: thread })
   } catch (error) {
     next(error)
   }
 })
 
-// List of all the threads.
+// List all threads
 threadsRouter.get('/threads', async (req, res, next) => {
   try {
     const filter = parseThreadListFilter({
@@ -88,69 +130,57 @@ threadsRouter.get('/threads', async (req, res, next) => {
       category: req.query.category,
       q: req.query.q,
     })
-    const extractListOfThreads = await listThreads(filter)
-    res.json({ data: extractListOfThreads })
+    const threads = await listThreads(filter)
+    res.json({ data: threads })
   } catch (error) {
     next(error)
   }
 })
 
-// Thread route for the replies, upvote,downvote functionality ->
+// List replies for a thread
 threadsRouter.get('/threads/:threadId/replies', async (req, res, next) => {
   try {
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('Unauthorised')
-    }
-    const threadId = Number(req.params.threadId)
+    requireClerkUserId(req)
+    const threadId = parseId(req.params.threadId, 'thread id')
+
     const replies = await listRepliesForThread(threadId)
     res.json({ data: replies })
   } catch (error) {
-    console.error(`Error : ${error}`)
     next(error)
   }
 })
 
-// Thread route for the post of thread =>
+// Post a reply to a thread
 threadsRouter.post('/threads/:threadId/replies', async (req, res, next) => {
   try {
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('Unauthorised')
-    }
-    const threadId = Number(req.params.threadId)
-    if (!Number.isInteger(threadId) || threadId <= 0) {
-      throw new BadRequest('Invalid thread id')
-    }
-    const bodyRaw = typeof req.body?.body === 'string' ? req.body.body : ''
-    if (bodyRaw.trim().length <= 2) {
-      throw new BadRequest('Reply is too short')
-    }
-    const profile = await getUserfromClerk(auth.userId)
-    const reply = await createReply({ threadId, authorUserId: profile.user.id, body: bodyRaw })
-    // here we will trigger the notification
+    const authorUserId = await requireCurrentUserId(req)
+    const threadId = parseId(req.params.threadId, 'thread id')
+    const { body } = createReplySchema.parse(req.body)
+
+    const reply = await createReply({ threadId, authorUserId, body })
+
+    await safeNotify('reply', () =>
+      createReplyNotification({ actorUserId: authorUserId, threadId })
+    )
+
     res.status(201).json({ data: reply })
   } catch (error) {
     next(error)
   }
 })
 
-// Thread route for the delete of the post =>
+// Delete a reply (author only)
 threadsRouter.delete('/replies/:replyId', async (req, res, next) => {
   try {
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('Unauthorised')
-    }
-    const replyId = Number(req.params.replyId)
-    if (!Number.isInteger(replyId) || replyId <= 0) {
-      throw new BadRequest('Invalid reply id.')
-    }
-    const profile = await getUserfromClerk(auth.userId)
-    const authorUserId = await findReplyAuthor(replyId)
+    const currentUserId = await requireCurrentUserId(req)
+    const replyId = parseId(req.params.replyId, 'reply id')
 
-    if (authorUserId !== profile.user.id) {
-      throw new UnauthorisedError("You can't delete this someone else replies.")
+    const authorUserId = await findReplyAuthor(replyId)
+    if (authorUserId == null) {
+      throw new NotFoundError('Reply not found.')
+    }
+    if (authorUserId !== currentUserId) {
+      throw new ForbiddenError("You can't delete someone else's reply.")
     }
 
     await deleteByReplyId(replyId)
@@ -160,38 +190,32 @@ threadsRouter.delete('/replies/:replyId', async (req, res, next) => {
   }
 })
 
-// Now for the like and removing the like =>
+// Like a thread
 threadsRouter.post('/threads/:threadId/like', async (req, res, next) => {
   try {
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('Unauthorised')
-    }
-    const threadId = Number(req.params.threadId)
-    if (!Number.isInteger(threadId) || threadId <= 0) {
-      throw new BadRequest('Invalid id.')
-    }
-    const profile = await getUserfromClerk(auth.userId)
-    await likeThreadOnce({ threadId, userId: profile.user.id })
-    // here also the notification.
+    const userId = await requireCurrentUserId(req)
+    const threadId = parseId(req.params.threadId, 'thread id')
+
+    // Expected to return `false` when the like already existed.
+    const created = await likeThreadOnce({ threadId, userId })
+
+    // if (created !== false) {
+    //   await safeNotify('like', () => createLikeNotification({ threadId, actorUserId: userId }))
+    // }
+
     res.status(204).send()
   } catch (error) {
     next(error)
   }
 })
 
+// Remove a like from a thread
 threadsRouter.delete('/threads/:threadId/like', async (req, res, next) => {
   try {
-    const auth = getAuth(req)
-    if (!auth.userId) {
-      throw new UnauthorisedError('Unauthorised')
-    }
-    const threadId = Number(req.params.threadId)
-    if (!Number.isInteger(threadId) || threadId <= 0) {
-      throw new BadRequest('Invalid id.')
-    }
-    const profile = await getUserfromClerk(auth.userId)
-    await removeLikeOnce({ threadId, userId: profile.user.id })
+    const userId = await requireCurrentUserId(req)
+    const threadId = parseId(req.params.threadId, 'thread id')
+
+    await removeLikeOnce({ threadId, userId })
     res.status(204).send()
   } catch (error) {
     next(error)
