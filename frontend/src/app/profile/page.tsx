@@ -123,7 +123,7 @@ function ProfilePage() {
   }
   return (
     <>
-      {isSignedIn && <div>User is signed in</div>}
+      {isSignedIn}
       {isSignedIn && (
         <main className="relative flex flex-1 flex-col overflow-hidden font-sans">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">

@@ -6,8 +6,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useNotificationCount } from '@/hooks/use-notification-count'
+import { useSocket } from '@/hooks/use-socket'
+import { apiGet, createBrowserApiClient } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
+import { Notification } from '@/types/notification'
+import { Show, SignInButton, SignUpButton, useAuth, UserButton } from '@clerk/nextjs'
 import {
   Bell,
   Check,
@@ -23,7 +27,8 @@ import {
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 
 const themeOptions = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -67,8 +72,50 @@ function ThemeToggle() {
 }
 
 export function Navbar() {
-  const [unreadCount, setUnreadCount] = useState(0)
+  // const [unreadCount, setUnreadCount] = useState(0)
+  const { getToken, userId } = useAuth()
+  const { socket } = useSocket()
+  const { unreadCount, setUnreadCount, incrementUnread } = useNotificationCount()
+  const apiClient = useMemo(() => createBrowserApiClient(getToken), [getToken])
+  useEffect(() => {
+    let isMounted = true
+    async function loadUnreadNotifications() {
+      if (!userId) {
+        if (isMounted) setUnreadCount(0)
+        return
+      }
+      try {
+        const data = await apiGet<Notification[]>(apiClient, '/api/notifications?unreadOnly=true')
+        if (!isMounted) return
+        console.log(data)
+        setUnreadCount(data.length)
+      } catch (error) {
+        if (!isMounted) return
+        console.log(`Error :${error}`)
+      }
+    }
+    loadUnreadNotifications()
+  }, [userId])
+  useEffect(() => {
+    if (!socket) {
+      return
+    }
+    const handleNewNotification = (payload: Notification) => {
+      incrementUnread()
+      toast('New Notification', {
+        description:
+          payload.type === 'REPLY_ON_THREAD'
+            ? `${payload.actor.handle ?? 'Someone'} commented on your thread`
+            : `${payload.actor.handle ?? 'Someone'} liked your thread`,
+      })
+    }
+    socket.on('notification:new', handleNewNotification)
+    return () => {
+      socket.off('notification:new', handleNewNotification)
+    }
+  }, [socket, incrementUnread])
   const [mobileMenuOpen, setMobileOpenMenu] = useState(false)
+
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
 
