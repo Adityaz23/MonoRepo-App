@@ -1,5 +1,6 @@
 import { ThemeProvider } from '@/components/theme-provider'
 import { Navbar } from '@/components/web/Navbar'
+import { NotificationCountProvider } from '@/hooks/use-notification-count'
 import { ClerkProvider } from '@clerk/nextjs'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
@@ -40,7 +41,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ClerkProvider>
-            <Navbar />
+            <NotificationCountProvider>
+              <Navbar />
+            </NotificationCountProvider>
             {children}
           </ClerkProvider>
         </ThemeProvider>
